@@ -16,6 +16,7 @@ export const TaskForm = ({ onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
+  const [lastSubmittedData, setLastSubmittedData] = useState(null);
 
   const {
     formData,
@@ -28,28 +29,40 @@ export const TaskForm = ({ onSubmit }) => {
     resetForm
   } = useFormValidation(initialFormState);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const submitData = async (data) => {
     setSubmitError('');
     setSubmitSuccess('');
+
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      await onSubmit(data);
+      setSubmitSuccess('Formulario enviado correctamente');
+      setLastSubmittedData(null);
+      resetForm();
+    } catch (error) {
+      setSubmitError(error.message || 'Ha ocurrido un error al enviar');
+      setLastSubmittedData(data);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     if (!isValid) {
       markAllTouched();
       return;
     }
 
-    if (isSubmitting) return;
+    await submitData(formData);
+  };
 
-    try {
-      setIsSubmitting(true);
-      await onSubmit(formData);
-      setSubmitSuccess('Formulario enviado correctamente');
-      resetForm();
-    } catch (error) {
-      setSubmitError(error.message || 'Ha ocurrido un error al enviar');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleRetry = async () => {
+    if (!lastSubmittedData) return;
+    await submitData(lastSubmittedData);
   };
 
   return (
@@ -57,7 +70,22 @@ export const TaskForm = ({ onSubmit }) => {
       <h2>Crear solución</h2>
 
       {submitSuccess && <div className="alert success">{submitSuccess}</div>}
-      {submitError && <div className="alert error">{submitError}</div>}
+
+      {submitError && (
+        <div className="alert error">
+          <p style={{ margin: 0 }}>{submitError}</p>
+          {lastSubmittedData && (
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={isSubmitting}
+              style={{ marginTop: '10px' }}
+            >
+              {isSubmitting ? 'Reintentando...' : 'Reintentar'}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="field">
         <label htmlFor="titulo">Título</label>
