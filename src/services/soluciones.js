@@ -1,5 +1,19 @@
 import { supabase } from './supabase';
 
+const getSupabaseErrorMessage = (error) => {
+  const message = error?.message?.toLowerCase() || '';
+
+  if (message.includes('failed to fetch')) {
+    return 'Error de red. Revisa tu conexión e inténtalo de nuevo.';
+  }
+
+  if (message.includes('permission denied') || message.includes('row-level security')) {
+    return 'No tienes permisos para realizar esta acción.';
+  }
+
+  return 'No se pudo completar la operación. Inténtalo de nuevo.';
+};
+
 export const insertSolucion = async (formData) => {
   const payload = {
     titulo: formData.titulo.trim(),
@@ -22,16 +36,18 @@ export const insertSolucion = async (formData) => {
   return data;
 };
 
-const getSupabaseErrorMessage = (error) => {
-  const message = error?.message?.toLowerCase() || '';
+export const getSolucionesByEmail = async (email) => {
+  const normalizedEmail = email.trim().toLowerCase();
 
-  if (message.includes('failed to fetch')) {
-    return 'Error de red. Revisa tu conexión e inténtalo de nuevo.';
+  const { data, error } = await supabase
+    .from('soluciones')
+    .select('*')
+    .eq('email', normalizedEmail)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(getSupabaseErrorMessage(error));
   }
 
-  if (message.includes('permission denied') || message.includes('row-level security')) {
-    return 'No tienes permisos para realizar esta acción.';
-  }
-
-  return 'No se pudo guardar la solución. Inténtalo de nuevo.';
+  return data;
 };
